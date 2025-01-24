@@ -100,17 +100,25 @@ def update_emails_in_db(emails):
     conn.commit()
     conn.close()
 
+
+def get_label_id(service, label_name):
+    """Get the ID of a label given its name."""
+    try:
+        labels_response = service.users().labels().list(userId='me').execute()
+        labels = labels_response.get('labels', [])
+        for label in labels:
+            if label['name'] == label_name:
+                return label['id']
+        print(f"Label '{label_name}' not found.")
+        return None
+    except HttpError as error:
+        print(f"Error retrieving labels: {error}")
+        return None
+
+
+
 def update_emails_in_service(emails, service):
-    """
-    Update email status (read/unread, labels) and handle special cases like Trash for Gmail.
-    """
-    system_labels = {
-        "CATEGORY_PERSONAL",
-        "CATEGORY_UPDATES",
-        "CATEGORY_FORUMS",
-        "CATEGORY_PROMOTIONS",
-        "CATEGORY_SOCIAL",
-    }
+
 
     for email in emails:
         email_id = email["id"]
@@ -141,37 +149,39 @@ def update_emails_in_service(emails, service):
                 print(f"Error while marking email {email_id} as unread: {error}")
 
         # Special case: Move email to Trash
-        if email.get("labels") == "TRASH":
+        if "TRASH" in email.get("labels", ""):
             try:
                 print(f"Moving email {email_id} to Trash...")
                 response = service.users().messages().trash(userId='me', id=email_id).execute()
                 print(f"Response for moving to Trash: {response}")
             except HttpError as error:
                 print(f"Error while moving email {email_id} to Trash: {error}")
-            continue  # Skip other label modifications for emails moved to Trash
-
+            continue  # Skip further label modification for emails moved to Trash
+        results = service.users().labels().list(userId='me').execute()
+        labels_all = results.get('labels', [])
+    
+        label_names = [label['name'] for label in labels_all]
+        # Handle labels (add/remove user labels, ignore system labels)
         labels_to_add = []
+        
 
-        # Check if labels exist in the email and handle potential cases like None or empty strings
+        # Split the labels and remove empty labels
         labels = email.get("labels", "").split(",") if email.get("labels") else []
-
-        # Iterate over the labels and strip extra spaces
+        labels_to_remove = [get_label_id(service,l) for l in label_names if l not in labels ]
+        # Iterate over the labels and process them
         for label in labels:
-            label = label.strip()  # Remove extra spaces around labels
-            if label and label not in system_labels:  # Add label only if it's not empty and not a system label
-                labels_to_add.append(label)
+            label = label.strip()  
+            if label:  
+                l_id=get_label_id(service,label)
+                print(l_id)
+                if l_id:
+                    labels_to_add.append(l_id)
 
-        # Optionally, log the labels to check what's being processed
-        if labels_to_add:
-            print(f"Labels to add: {labels_to_add}")
-        else:
-            print("No labels to add.")
 
 
         if labels_to_add:
-            print("adding labels")
+            print(f"Adding labels {labels_to_add} to email {email_id}...")
             try:
-                print(f"Adding labels {labels_to_add} to email {email_id}...")
                 response = service.users().messages().modify(
                     userId='me',
                     id=email_id,
@@ -181,25 +191,23 @@ def update_emails_in_service(emails, service):
             except HttpError as error:
                 print(f"Error while adding labels to email {email_id}: {error}")
 
-        labels_to_remove = [
-            label.strip()
-            for label in email.get("labels", "").split(",")
-            if label.strip() in system_labels and label.strip() != "TRASH"
-        ]
-
         if labels_to_remove:
-            try:
-                print(f"Removing labels {labels_to_remove} from email {email_id}...")
-                response = service.users().messages().modify(
-                    userId='me',
-                    id=email_id,
-                    body={'removeLabelIds': labels_to_remove}
-                ).execute()
-                print(f"Response for removing labels: {response}")
-            except HttpError as error:
-                print(f"Error while removing labels from email {email_id}: {error}")
+            print(f"Removing labels {labels_to_remove} from email {email_id}...")
+            for label in labels_to_remove:
+                try:
+                    response = service.users().messages().modify(
+                        userId='me',
+                        id=email_id,
+                        body={'removeLabelIds': [label]}
+                    ).execute()
+                    print(f"Response for removing label {label}: {response}")
+                except HttpError as error:
 
-        print(f"Finished processing email {email_id}.\n")
+                    print(f"Error while removing label {label} from email {email_id}: {error}")
+                    continue
+
+        print(f"Finished processing email {email_id,email}.\n")
+
 
 
 def process_rules(service):
@@ -231,7 +239,6 @@ def process_rules(service):
         return
 
     for rule in rules.get("rules", []):
-        print(rule)
         rule_type = rule["type"]
         conditions = rule["conditions"]
         actions = rule["actions"]
@@ -239,17 +246,15 @@ def process_rules(service):
         for email in emails:
             print(email)
             if rule_type == "All":
-                print("hello")
+                
                 # Apply 'All' condition: all conditions must be met
                 if all(match_condition(email, condition) for condition in conditions):
-                    print("match success for all condition")
                     for action in actions:
                         perform_action(email, action)
             elif rule_type == "Any":
                 # Apply 'Any' condition: at least one condition must be met
                 if any(match_condition(email, condition) for condition in conditions):
                     for action in actions:
-                        print("hi")
                         perform_action(email, action)
 
     # Step 4: After applying the rules, update the emails in the database and service
