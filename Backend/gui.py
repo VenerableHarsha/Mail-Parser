@@ -89,8 +89,8 @@ class RulesManager:
     def apply_rules(self):
         """Trigger the process_rules function."""
         from Backend.rules import process_rules  # Import the rules processing function
-        process_rules(self.service)
-        messagebox.showinfo("Success", "Rules applied successfully.")
+        emails=process_rules(self.service)
+        messagebox.showinfo("Success", "Rules applied successfully.\nEmails affected:"+str(emails))
 
 
 class RuleEditor:
@@ -202,40 +202,63 @@ class RuleEditor:
                 widget.grid(row=i + 1, column=j, padx=5, pady=2, sticky="w")
 
     def save_rule(self):
-            # Save the rule type
-            self.rule["type"] = self.rule_type_var.get()
+    # Save the rule type
+        self.rule["type"] = self.rule_type_var.get()
 
-            # Save the conditions
-            self.rule["conditions"] = []
-            for row in self.condition_rows:
-                field, predicate, value = row[0].get(), row[1].get(), row[2].get()
-                if field and predicate and value:
-                    self.rule["conditions"].append({"field": field, "predicate": predicate, "value": value})
+        # Save the conditions
+        self.rule["conditions"] = []
+        for row in self.condition_rows:
+            field, predicate, value = row[0].get(), row[1].get(), row[2].get()
 
-            # Save the actions
-            self.rule["actions"] = []
+            if field and predicate and value:
+                # Validate the datatype of the value based on the field
+                if field in ["From", "Subject", "Message"]:
+                    # These fields expect a string
+                    if not isinstance(value, str) or value.strip() == "":
+                        messagebox.showerror("Error", f"Invalid value for '{field}'. It should be a non-empty string.")
+                        return
+                elif field == "Received Date/Time":
+                    # Validate if the value is in a proper date/time format
+                    from datetime import datetime
+                    try:
+                        datetime.strptime(value, "%Y-%m-%d %H:%M:%S")  # Assuming "YYYY-MM-DD HH:MM:SS" format
+                    except ValueError:
+                        messagebox.showerror("Error", f"Invalid value for '{field}'. Expected format: YYYY-MM-DD HH:MM:SS.")
+                        return
+                if not (field and predicate and value):
+                    messagebox.showerror("Error", "All condition fields must be filled out.")
+                    return
+                self.rule["conditions"].append({"field": field, "predicate": predicate, "value": value})
 
-            # Handle "Mark as Read/Unread" action (including "None")
-            if self.mark_read_var.get() == "Read":
-                self.rule["actions"].append("Mark as Read")
-            elif self.mark_read_var.get() == "Unread":
-                self.rule["actions"].append("Mark as Unread")
-            # If "None" is selected, do nothing for mark actions
+        # Save the actions
+        self.rule["actions"] = []
 
-            # Handle "Move to" action
-            if self.move_to_var.get():
-                self.rule["actions"].append(f"Move to {self.move_to_var.get()}")
+        # Handle "Mark as Read/Unread" action (including "None")
+        if self.mark_read_var.get() == "Read":
+            self.rule["actions"].append("Mark as Read")
+        elif self.mark_read_var.get() == "Unread":
+            self.rule["actions"].append("Mark as Unread")
+        # If "None" is selected, do nothing for mark actions
 
-            # Add or update the rule in the manager's rules
-            if self.rule_index is not None:
-                self.manager.rules["rules"][self.rule_index] = self.rule
-            else:
-                self.manager.rules["rules"].append(self.rule)
+        # Handle "Move to" action
+        if self.move_to_var.get():
+            # Validate if the selected label exists
+            if self.move_to_var.get() not in self.manager.labels:
+                messagebox.showerror("Error", f"Invalid label: '{self.move_to_var.get()}'.")
+                return
+            self.rule["actions"].append(f"Move to {self.move_to_var.get()}")
 
-            # Save to file
-            self.manager.save_rules()
-            self.manager.refresh_rules_listbox()
-            self.root.destroy()
+        # Add or update the rule in the manager's rules
+        if self.rule_index is not None:
+            self.manager.rules["rules"][self.rule_index] = self.rule
+        else:
+            self.manager.rules["rules"].append(self.rule)
+
+        # Save to file
+        self.manager.save_rules()
+        self.manager.refresh_rules_listbox()
+        self.root.destroy()
+
 
 
 

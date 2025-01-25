@@ -261,9 +261,10 @@ def process_rules(service):
     for i in rem:
         if i in emails:
             emails.remove(i)
-    print("emails",emails)
+    
     # Step 4: After applying the rules, update the emails in the database and service
     update_emails_in_db(emails)  # Update the emails in the database
     update_emails_in_service(emails,service)  # Apply changes to the main email service (e.g., Gmail API)
 
     print("Rules applied successfully.")
+    return len(emails)
