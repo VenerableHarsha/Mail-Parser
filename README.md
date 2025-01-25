@@ -42,12 +42,20 @@ pip install -r requirements.txt
 
 This will install the necessary libraries to run the project.
 
+
 ### 4. OAuth Authentication
 Before using the tool, make sure to set up OAuth authentication with your Gmail account by following these steps:
 
 - Create OAuth credentials in the Google Cloud Console and download the `credentials.json` file.
 - Place the `credentials.json` file in the project directory.
 - You will need to authenticate your Gmail account to interact with the Gmail API.(FOR NOW THIS IS NOT POSSIBLE DUE TO MY PROJECT NOT BEING VERIFIED FOR EXTERNAL ACCESS BY THE CLOUD PLATFORM)
+
+### 5. Run the Main.py
+Running the following command in the terminal where the virtual environment is active will open the app.
+```bash
+python main.py
+```
+
 
 ---
 
