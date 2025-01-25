@@ -56,15 +56,15 @@ Before using the tool, make sure to set up OAuth authentication with your Gmail 
 ### Step 1: Add Rules
 Once the project is set up and running, the first step is to define the rules that will govern how the emails are processed. To add rules:
 
-- Open the `rules.json` file (or use the GUI if it's available) to create rules.
+- Open the `rules.json` file or use the GUI(Just run main.py) to create rules.
 - Each rule can have conditions (such as "Sender equals" or "Received Date within last X days") and actions (such as "Mark as Read" or "Move to Folder").
 - Ensure the rules are in the correct format as specified in the configuration.
 
 ### Step 2: Select Your Requirements
-Use the provided GUI or console interface to select the conditions and actions you want to apply to your emails:
+Use the provided GUI to select the conditions and actions you want to apply to your emails:
 
 - Choose conditions from options like "Sender," "Subject," and "Received Date."
-- Set the type of action, such as marking as read, moving emails to a folder, or applying labels.
+- Set the type of action, such as marking as read or moving emails to a folder.
 
 ### Step 3: Save and Apply Rules
 Once you’ve selected your conditions and actions, save the rules and apply them to your emails:
