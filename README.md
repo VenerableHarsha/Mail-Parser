@@ -88,7 +88,7 @@ While the Mail-Parser project is functional, there are several limitations in th
 2. **Handling of Edge Cases**:
    - The current implementation does not handle certain edge cases. For example:
      - If the `received` condition is based on a `datetime`, the user interface should dynamically update to show days or other units based on the user's selection. This isn't currently implemented.
-     - There is no validation for type mismatches, such as when a number is expected but a string is provided, which can cause errors during rule application.
+  
 
 3. **Performance Issues**:
    - The current method of checking email labels and processing actions is slow and inefficient. The iteration over labels, fetching information repeatedly from Gmail, adds significant time to the processing.
