@@ -26,8 +26,9 @@ def perform_action(email, action):
     elif action.startswith("Move to"):
         folder = action.split("Move to ")[1]
         print("perform action",folder)
+        if folder=='IMPORTANT':
+            folder=folder+", "+"INBOX"
         email["labels"] = folder
-        print(email)
         print(f"Email {email['id']} moved to {folder}.")
 
 def match_condition(email, condition):
@@ -162,7 +163,8 @@ def update_emails_in_service(emails, service):
         
 
         # Split the labels and remove empty labels
-        labels = email.get("labels", "").split(",") if email.get("labels") else []
+        labels = email.get("labels", "").split(", ") if email.get("labels") else []
+        print(" here is the split labels:    ++++++++",labels)
         labels_to_remove = [get_label_id(service,l) for l in label_names if l not in labels ]
         # Iterate over the labels and process them
         for label in labels:
@@ -206,15 +208,13 @@ def update_emails_in_service(emails, service):
 
 def process_rules(service):
     """Process rules, apply them to the emails, and update both the database and the email service."""
-    # Step 1: Load the rules from the rules.json file
     rules = load_rules_from_json()
-    print(rules)
     if not rules:
         print("No rules found.")
         return
 
-    # Step 2: Fetch emails from the database
-    emails = fetch_emails_from_db()  # Fetch emails stored in your database
+
+    emails = fetch_emails_from_db()  
     emails = [
     {
         "id": email[0],
@@ -231,7 +231,7 @@ def process_rules(service):
     if not emails:
         print("No emails found in the database.")
         return
-
+    keep=[]
     for rule in rules.get("rules", []):
         rule_type = rule["type"]
         conditions = rule["conditions"]
@@ -244,27 +244,25 @@ def process_rules(service):
                 if all(match_condition(email, condition) for condition in conditions):
 
                     flag="keep"
-
+                    print(email['id'],"passed all")
                     for action in actions:
 
                         perform_action(email, action)
             elif rule_type == "Any":
                 
-                # Apply 'Any' condition: at least one condition must be met
                 if any(match_condition(email, condition) for condition in conditions):
                     flag="keep"
+                    print(email['id'],"passed any")
                     for action in actions:
                         perform_action(email, action)
             
             if flag=="remove":
                 rem.append(email)
-    for i in rem:
-        if i in emails:
-            emails.remove(i)
-    
-    # Step 4: After applying the rules, update the emails in the database and service
-    update_emails_in_db(emails)  # Update the emails in the database
-    update_emails_in_service(emails,service)  # Apply changes to the main email service (e.g., Gmail API)
+        keep+=[i for i in emails if i not in rem]
+    print("emails:::",keep)
+
+    update_emails_in_db(keep)  # Update the emails in the database
+    update_emails_in_service(keep,service)  # Apply changes to the main email service (e.g., Gmail API)
 
     print("Rules applied successfully.")
     return len(emails)
