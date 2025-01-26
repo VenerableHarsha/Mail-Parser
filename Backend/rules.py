@@ -265,4 +265,4 @@ def process_rules(service):
     update_emails_in_service(keep,service)  # Apply changes to the main email service (e.g., Gmail API)
 
     print("Rules applied successfully.")
-    return len(emails)
+    return len(keep)

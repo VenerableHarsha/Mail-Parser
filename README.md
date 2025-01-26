@@ -39,7 +39,7 @@ Once the virtual environment is activated, install all the required dependencies
 ```bash
 pip install -r requirements.txt
 ```
-
+NOTE: IF YOU ARE ON MAC YOU MAY HAVE TO INSTALL Tkinter and sqlite3 (use : pip install tkinter sqlite3)
 This will install the necessary libraries to run the project.
 
 
