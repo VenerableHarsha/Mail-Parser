@@ -8,6 +8,9 @@ def init_db():
     """
     Initialize the SQLite3 database with an emails table.
     """
+    if os.path.exists(DB_FILE):
+        os.remove(DB_FILE)
+        print(f"Deleted existing database: {DB_FILE}")
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute('''

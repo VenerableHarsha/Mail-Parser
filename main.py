@@ -36,16 +36,16 @@ def main():
     Main function to authenticate and launch the Rules Manager GUI.
     """
     try:
-        service = authenticate_gmail()  # Perform Gmail OAuth authentication
+        service = authenticate_gmail() 
         print("authentication done")
         if service:
             fetch_emails(service)
             labels=fetch_all_labels(service)
             print("emails geto")
-            launch_rules_gui(labels,service)  # Launch Rules Manager GUI if authentication is successful
+            launch_rules_gui(labels,service) 
     except Exception as e:
         print(f"Error during authentication: {e}")
-        show_retry_window()  # Show retry window if authentication fails
+        show_retry_window() 
 
 if __name__ == "__main__":
     main()

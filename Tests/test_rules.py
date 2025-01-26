@@ -76,7 +76,7 @@ class TestEmailRuleProcessor(unittest.TestCase):
             "labels": "",
             "read": False
         }
-        perform_action(email, "Mark as Read")
+        email=perform_action(email, "Mark as Read")
         self.assertTrue(email["read"])
 
     def test_perform_action_move_to_folder(self):
@@ -90,7 +90,7 @@ class TestEmailRuleProcessor(unittest.TestCase):
             "labels": "",
             "read": False
         }
-        perform_action(email, "Move to Important")
+        email=perform_action(email, "Move to Important")
         self.assertEqual(email["labels"], "Important")
 
     @patch('sqlite3.connect')

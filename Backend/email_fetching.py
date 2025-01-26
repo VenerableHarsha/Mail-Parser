@@ -45,7 +45,7 @@ def fetch_emails(service, max_results=10):
         is_read = "UNREAD" not in label_ids
 
 
-        # Insert email into the database along with labels
+        
         init_db()
         insert_email(email_id, sender, subject, body, received_date, label_ids,is_read)
 def fetch_all_labels(service):
