@@ -4,7 +4,8 @@ from datetime import timedelta, datetime
 import sqlite3
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-
+import copy
+from datetime import datetime, timedelta
 RULES_FILE = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'rules.json')
 )
@@ -13,33 +14,47 @@ DB_FILE = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'emails.db')
 )
 
+    
 def perform_action(email, action):
+    email_copy = copy.deepcopy(email) 
     print(action, "is being done")
     if action == "Mark as Read":
         print("performing mark as read")
-        email["read"] = True
+        email_copy["read"] = True
         print(f"Email {email['id']} marked as read.")
     elif action == "Mark as Unread":
         print("performing mark as unread")
-        email["read"] = False
+        email_copy["read"] = False
         print(f"Email {email['id']} marked as unread.")
     elif action.startswith("Move to"):
         folder = action.split("Move to ")[1]
         print("perform action",folder)
         if folder=='IMPORTANT':
             folder=folder+", "+"INBOX"
-        email["labels"] = folder
+        email_copy["labels"] = folder
         print(f"Email {email['id']} moved to {folder}.")
+    if email_copy == email:
+        print("No modifications needed. Action would result in no changes.")
+        return None 
 
+    print("Email modified. Action will be applied.",email_copy,email)
+    return email_copy
 def match_condition(email, condition):
+    
+
     field = condition["field"]
     predicate = condition["predicate"]
     value = condition["value"]
+
+    # Ensure field exists in the email dictionary
     if field not in email:
-        print(field,"not in ",email)
+        print(field, "not in", email)
         print("returning false as no field")
         return False
+
     email_value = email[field]
+
+    # String-based conditions
     if isinstance(email_value, str):
         if predicate == "Contains" and value in email_value:
             return True
@@ -49,16 +64,32 @@ def match_condition(email, condition):
             return True
         elif predicate == "Does not Equal" and value != email_value:
             return True
-    if field == "received":
-        email_date = datetime.strptime(email_value, "%Y-%m-%d %H:%M:%S")
-        days = int(value)
-        compare_date = datetime.now() - timedelta(days=days)
 
-        if predicate == "Less than" and email_date < compare_date:
-            return True
-        elif predicate == "Greater than" and email_date > compare_date:
-            return True
+    # Date-based conditions for "Received Date/Time"
+    if field == "Received Date/Time":
+        try:
+            email_date = datetime.strptime(email_value, "%Y-%m-%d %H:%M:%S")
+            if predicate in ["Less than", "Greater than"]:
+                days = int(value) 
+                print(days," is the number of days given")
+                compare_date = datetime.now() - timedelta(days=days)
+                print(compare_date," is the number of difference days given")
+                if predicate == "Less than" and email_date > compare_date:
+                    return True
+                elif predicate == "Greater than" and email_date < compare_date:
+                    return True
+            elif predicate in ["Equals", "Does not Equal"]:
+                compare_date = datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+                if predicate == "Equals" and email_date == compare_date:
+                    return True
+                elif predicate == "Does not Equal" and email_date != compare_date:
+                    return True
+        except ValueError:
+            print("Invalid date format in email or condition.")
+            return False
+
     return False
+
 
 def load_rules_from_json():
     """Load rules from the JSON file."""
@@ -236,29 +267,31 @@ def process_rules(service):
         rule_type = rule["type"]
         conditions = rule["conditions"]
         actions = rule["actions"]
-        rem=[]
         for email in emails:
-            flag="remove"
+            if "TRASH" in email['labels']:
+                print(email)
+                continue
             if rule_type == "All":
 
                 if all(match_condition(email, condition) for condition in conditions):
-
-                    flag="keep"
+                    
                     print(email['id'],"passed all")
                     for action in actions:
 
-                        perform_action(email, action)
+                        e=perform_action(email, action)
+                        if e is not None and e not in keep:
+                            keep.append(e)
+
             elif rule_type == "Any":
                 
                 if any(match_condition(email, condition) for condition in conditions):
-                    flag="keep"
                     print(email['id'],"passed any")
                     for action in actions:
-                        perform_action(email, action)
-            
-            if flag=="remove":
-                rem.append(email)
-        keep+=[i for i in emails if i not in rem]
+                        e=perform_action(email, action)
+                        if e is not None and e not in keep:
+                            keep.append(e)
+                        
+
     print("emails:::",keep)
 
     update_emails_in_db(keep)  # Update the emails in the database

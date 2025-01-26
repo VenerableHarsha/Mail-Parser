@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 import os
+from Backend.email_fetching import fetch_emails
 RULES_FILE= os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'rules.json')
 )
@@ -91,6 +92,9 @@ class RulesManager:
         from Backend.rules import process_rules  # Import the rules processing function
         emails=process_rules(self.service)
         messagebox.showinfo("Success", "Rules applied successfully.\nEmails affected:"+str(emails))
+        
+        fetch_emails(self.service)
+        print("sync complete")
 
 
 class RuleEditor:
@@ -202,7 +206,7 @@ class RuleEditor:
                 widget.grid(row=i + 1, column=j, padx=5, pady=2, sticky="w")
 
     def save_rule(self):
-    # Save the rule type
+        # Save the rule type
         self.rule["type"] = self.rule_type_var.get()
 
         # Save the conditions
@@ -218,16 +222,25 @@ class RuleEditor:
                         messagebox.showerror("Error", f"Invalid value for '{field}'. It should be a non-empty string.")
                         return
                 elif field == "Received Date/Time":
-                    # Validate if the value is in a proper date/time format
+                    # Validate either a date/time format or a valid integer (for days)
                     from datetime import datetime
                     try:
-                        datetime.strptime(value, "%Y-%m-%d %H:%M:%S")  # Assuming "YYYY-MM-DD HH:MM:SS" format
+                        if predicate in ["Less than", "Greater than"]:
+                            # Allow integers for "Less than" or "Greater than"
+                            int(value)  # Ensure the value is an integer
+                        else:
+                            
+                            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
                     except ValueError:
-                        messagebox.showerror("Error", f"Invalid value for '{field}'. Expected format: YYYY-MM-DD HH:MM:SS.")
+                        messagebox.showerror(
+                            "Error",
+                            f"Invalid value for '{field}'. Expected either:\n"
+                            "- A valid date/time in the format YYYY-MM-DD HH:MM:SS, or\n"
+                            "- An integer (number of days) for 'Less than'/'Greater than'."
+                        )
                         return
-                if not (field and predicate and value):
-                    messagebox.showerror("Error", "All condition fields must be filled out.")
-                    return
+
+                # Add the condition to the rule
                 self.rule["conditions"].append({"field": field, "predicate": predicate, "value": value})
 
         # Save the actions
